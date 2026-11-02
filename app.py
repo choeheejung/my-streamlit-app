@@ -23,6 +23,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # 사용자 입력
+# chat_input : 대화창 젤 밑에!
 user_input = st.chat_input("메시지를 입력하세요...")
 
 if user_input:
