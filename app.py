@@ -154,7 +154,8 @@ if submit:
         # LLM 호출
         response = client.responses.create(
             model="gpt-4o-mini",
-            input=input_messages
+            input=input_messages,
+            top_p=0.9
         )
         answer = response.output_text
 
