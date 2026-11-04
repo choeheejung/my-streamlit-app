@@ -10,8 +10,8 @@ client = OpenAI()
 
 # 이메일 발송 함수 send_email() 추가
 def send_email(to, subject, body):
-    sender = os.getenv("GMAIL_ADDRESS")
-    password = os.getenv("GMAIL_APP_PASSWORD")
+    sender = st.secrets["GMAIL_ADDRESS"]
+    password = st.secrets["GMAIL_APP_PASSWORD"]
 
     # 메일 구성 (본문, 제목, 발신자, 수신자)
     msg = MIMEText(body)
