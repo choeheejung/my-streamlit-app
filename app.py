@@ -1413,11 +1413,28 @@ with right:
                         audio_input
                     )
 
+    # 음성으로 이메일 발송을 요청한 경우
                 st.session_state.last_stt = transcript
-                st.session_state.stt_pending = transcript
-                st.session_state.stt_edit = transcript
+
+                email_request = (
+                    ("이메일" in transcript or "메일" in transcript)
+                    and any(word in transcript for word in ("보내", "발송", "전송"))
+                )
+
+                if email_request:
+                    process_question(
+                        transcript + " 이 요청은 이메일 발송 요청입니다. 발송 승인 화면을 준비해 주세요.",
+                        enable_tts,
+                        force_email_send=True
+                    )
+                    st.session_state.stt_pending = None
+
+                else:
+                    st.session_state.stt_pending = transcript
+                    st.session_state.stt_edit = transcript
 
                 st.rerun()
+
 
             except Exception as e:
                 st.error(
