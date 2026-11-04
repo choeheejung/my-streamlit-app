@@ -1183,10 +1183,10 @@ encouragements = [
     "💛 오늘도 애쓰고 있네요. 스스로에게도 다정하게 말해주세요!"
 ]
     # 처음 접속할 때 한 문구를 선택해서 저장
-    if "encouragement" not in st.session_state:
-    st.session_state.encouragement = random.choice(encouragements)
-    # 실행 버튼을 누르지 않아도 메인 화면에 표시
-    st.info(st.session_state.encouragement)
+if "encouragement" not in st.session_state:
+  st.session_state.encouragement = random.choice(encouragements)
+  # 실행 버튼을 누르지 않아도 메인 화면에 표시
+  st.info(st.session_state.encouragement)
 
 
 # =========================================================
