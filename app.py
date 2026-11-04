@@ -198,8 +198,18 @@ st.subheader("📧 이메일 발송")
 
 with st.form("email_form"):
     receiver = st.text_input("받는 사람 이메일")
-    subject = st.text_input("이메일 제목")
-    body = st.text_area("이메일 내용")
+
+    subject = st.text_input(
+        "이메일 제목",
+        value=st.session_state.email_draft["subject"]
+        if st.session_state.email_draft else ""
+        )
+
+    body = st.text_area(
+        "이메일 내용",
+        value=st.session_state.email_draft["body"]
+        if st.session_state.email_draft else ""
+    )
 
     send = st.form_submit_button("발송 승인")
 
