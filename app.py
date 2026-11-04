@@ -104,8 +104,8 @@ st.divider()
 st.subheader("💬 최근 대화 기록")
 
 for msg in reversed(st.session_state.messages):
-  with st.chat_message("user"):
+ with st.chat_message("user"):
         st.write(msg["user"])
 
-    with st.chat_message("assistant"):
+ with st.chat_message("assistant"):
         st.write(msg["assistant"])
