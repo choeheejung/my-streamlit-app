@@ -98,3 +98,14 @@ st.session_state.messages = st.session_state.messages[-10:]
 # 대화 기록 초기화
 if st.button("초기화"):
   st.session_state.messages.clear()
+
+# 최근 대화 기록 출력
+st.divider()
+st.subheader("💬 최근 대화 기록")
+
+for msg in st.session_state.messages:
+    with st.chat_message("user"):
+        st.write(msg["user"])
+
+    with st.chat_message("assistant"):
+        st.write(msg["assistant"])
