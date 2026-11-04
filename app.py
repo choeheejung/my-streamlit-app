@@ -91,13 +91,13 @@ if submit:
         voice="nova",
         input=answer
         )
-
-   # 음성 파일 저장
-   speech.stream_to_file("answer.mp3")
-
-   # 음성 재생
-   st.audio("answer.mp3", format="audio/mp3", autoplay=True)
-
+    
+    # 음성 파일 저장
+    speech.stream_to_file("answer.mp3")
+    
+    # 음성 재생
+    st.audio("answer.mp3", format="audio/mp3", autoplay=True)
+    
 # 대화 기록 저장
 if submit:
   st.session_state.messages.append({
