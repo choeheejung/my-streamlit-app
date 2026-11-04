@@ -85,6 +85,19 @@ if submit:
         st.subheader("AI 답변")
         st.write(answer)
 
+    # AI 답변을 음성으로 변환
+    speech = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="nova",
+        input=answer
+        )
+
+   # 음성 파일 저장
+   speech.stream_to_file("answer.mp3")
+
+   # 음성 재생
+   st.audio("answer.mp3", format="audio/mp3", autoplay=True)
+
 # 대화 기록 저장
 if submit:
   st.session_state.messages.append({
