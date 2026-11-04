@@ -59,6 +59,10 @@ sys_role = """
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# 이메일 초안 저장
+if "email_draft" not in st.session_state:
+    st.session_state.email_draft = None
+
 # 지시 영역
 with st.form("task_form"):
     uploaded_file = st.file_uploader("텍스트 파일 업로드", type=["txt"])
@@ -94,6 +98,48 @@ if submit:
 
     # 사용자 메시지
     input_messages.append({"role": "user", "content": transcript.text})
+    
+    # 이메일 작성 요청인지 확인
+    email_request = (
+        "이메일" in transcript.text or
+        "메일" in transcript.text
+        ) and (
+        "작성" in transcript.text or
+        "보내" in transcript.text or
+        "발송" in transcript.text
+        )
+
+    if email_request:
+        # 이메일 초안 작성 요청
+        email_messages = input_messages + [{
+            "role": "user",
+            "content": """
+            사용자의 요청과 회의록을 바탕으로 이메일 초안을 작성하세요.
+            반드시 아래 형식으로만 답변하세요.
+
+            제목: 이메일 제목
+            본문:
+            이메일 본문
+
+            회의록에 없는 내용은 만들어내지 마세요.
+            """
+            }]
+
+        email_response = client.responses.create(
+            model="gpt-4o-mini",
+            input=email_messages
+            )
+
+        draft_text = email_response.output_text
+
+        # 제목과 본문 분리
+        if "본문:" in draft_text:
+          subject_text, body_text = draft_text.split("본문:", 1)
+
+          st.session_state.email_draft = {
+              "subject": subject_text.replace("제목:", "").strip(),
+              "body": body_text.strip()
+              }
 
     # LLM 호출 및 응답 듣기
     with st.spinner("답변을 준비하고 있습니다..."):
@@ -167,3 +213,12 @@ if send:
             st.success("이메일 발송 완료!")
         else:
             st.error("이메일 발송 실패")
+
+# AI가 작성한 이메일 초안 표시
+if st.session_state.email_draft:
+    st.divider()
+    st.subheader("✉️ AI 이메일 초안")
+
+    st.write("**제목:**", st.session_state.email_draft["subject"])
+    st.write("**본문:**")
+    st.write(st.session_state.email_draft["body"])
