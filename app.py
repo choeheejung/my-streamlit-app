@@ -63,6 +63,10 @@ if "messages" not in st.session_state:
 if "email_draft" not in st.session_state:
     st.session_state.email_draft = None
 
+# 이메일 초안 저장 공간에 번호 추가
+if "draft_version" not in st.session_state:
+    st.session_state.draft_version = 0
+
 # 지시 영역
 with st.form("task_form"):
     uploaded_file = st.file_uploader("텍스트 파일 업로드", type=["txt"])
@@ -140,6 +144,10 @@ if submit:
               "subject": subject_text.replace("제목:", "").strip(),
               "body": body_text.strip()
               }
+          
+          # 이메일 초안 생성 후 번호 증가
+          st.session_state.draft_version += 1
+              
 
     # LLM 호출 및 응답 듣기
     with st.spinner("답변을 준비하고 있습니다..."):
@@ -202,14 +210,16 @@ with st.form("email_form"):
     subject = st.text_input(
         "이메일 제목",
         value=st.session_state.email_draft["subject"]
-        if st.session_state.email_draft else ""
+        if st.session_state.email_draft else "",
+        key=f"subject_{st.session_state.draft_version}"
         )
 
     body = st.text_area(
         "이메일 내용",
         value=st.session_state.email_draft["body"]
-        if st.session_state.email_draft else ""
-    )
+        if st.session_state.email_draft else "",
+        key=f"body_{st.session_state.draft_version}"
+        )
 
     send = st.form_submit_button("발송 승인")
 
