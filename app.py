@@ -1,10 +1,33 @@
 
 import os, base64, json, requests
+import smtplib
+from email.mime.text import MIMEText
 import streamlit as st
 from openai import OpenAI
 
 # OpenAI 클라이언트 생성
 client = OpenAI()
+
+# 이메일 발송 함수 send_email() 추가
+def send_email(to, subject, body):
+    sender = os.getenv("GMAIL_ADDRESS")
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    # 메일 구성 (본문, 제목, 발신자, 수신자)
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to
+
+    # 메일 보내기 (with 구문: 오류가 나도 연결이 닫힘)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as s:
+            s.starttls()
+            s.login(sender, password)
+            s.sendmail(sender, to, msg.as_string())
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
 
 # 페이지 설정
 st.set_page_config(page_title="에이블 AI 개인비서", page_icon="🤖", layout="wide")
