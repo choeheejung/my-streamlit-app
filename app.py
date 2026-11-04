@@ -7,14 +7,24 @@ from openai import OpenAI
 client = OpenAI()
 
 # 페이지 설정
-st.set_page_config(page_title="음성 AI 서비스", page_icon="🤖", layout="wide")
-st.title("음성 인식 AI 서비스")
-st.write("음성으로 질문하시면 답변해 드립니다.")
+st.set_page_config(page_title="에이블 AI 개인비서", page_icon="🤖", layout="wide")
+st.title("🤖 에이블 | 김 대리의 AI 개인비서")
+st.write("회의록 분석부터 업무 관리까지 도와드립니다.")
 
 # 역할 지정
 sys_role = """
-당신은 다양한 업무를 처리하는 AI 서비스입니다.
-개인 비서처럼 친절하게 응대합니다.
+당신은 김 대리의 AI 개인비서 '에이블'입니다.
+
+[역할]
+1. 회의록의 주요 안건과 결정 사항 요약
+2. 김 대리에게 배정된 업무와 마감기한 정리
+3. 업무별 긴급도와 중요도 구분
+4. 회의록을 바탕으로 사용자의 질문에 답변
+
+[지시사항]
+- 답변은 명확하고 간결하게 작성합니다.
+- 회의록에 없는 내용은 임의로 만들어내지 않습니다.
+- 확인할 수 없는 정보는 '확인 필요'라고 표시합니다.
 """
 
 # 상태 초기화
@@ -49,6 +59,8 @@ if submit:
     transcript = client.audio.transcriptions.create(
         model="whisper-1",
         file=("audio.wav", audio_value, "audio/wav"))
+    st.subheader("🎤 음성 인식 결과")
+    st.write(transcript.text)
 
     # 사용자 메시지
     input_messages.append({"role": "user", "content": transcript.text})
