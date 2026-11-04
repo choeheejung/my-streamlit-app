@@ -84,3 +84,17 @@ if submit:
         # 응답 출력
         st.subheader("AI 답변")
         st.write(answer)
+
+# 대화 기록 저장
+if submit:
+  st.session_state.messages.append({
+    "user": transcript.text,
+    "assistant": answer
+    })
+  
+# 최근 대화 10개만 유지
+st.session_state.messages = st.session_state.messages[-10:]
+
+# 대화 기록 초기화
+if st.button("초기화"):
+  st.session_state.messages.clear()
