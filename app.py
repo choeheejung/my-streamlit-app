@@ -24,7 +24,11 @@ sys_role = """
 [지시사항]
 - 답변은 명확하고 간결하게 작성합니다.
 - 회의록에 없는 내용은 임의로 만들어내지 않습니다.
-- 확인할 수 없는 정보는 '확인 필요'라고 표시합니다.
+- 사용자가 특정 직원의 담당 업무를 질문하면, 회의록에서 해당 직원의 업무만 추출합니다.
+- 담당자 이름이 정확히 일치하지 않으면 임의로 추측하지 않고 확인을 요청합니다.
+- 업무 마감기한은 회의록에 명시된 경우에만 작성합니다.
+- 회의록에 없는 업무나 마감기한은 생성하지 않습니다.
+- 긴급도와 중요도는 근거가 있을 때만 판단하며, 판단 근거가 부족하면 '확인 필요'로 표시합니다.
 """
 
 # 상태 초기화
@@ -58,7 +62,9 @@ if submit:
     # STT: 음성 → 텍스트
     transcript = client.audio.transcriptions.create(
         model="whisper-1",
-        file=("audio.wav", audio_value, "audio/wav"))
+        file=("audio.wav", audio_value, "audio/wav"),
+        prompt="김 대리, 에이블, 회의록, 담당 업무"
+        )
     st.subheader("🎤 음성 인식 결과")
     st.write(transcript.text)
 
