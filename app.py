@@ -567,7 +567,7 @@ def valid_email(address):
 # 5. AI 질문 처리
 # ---------------------------------------------------------
 
-def process_question(question, enable_tts):
+def process_question(question, enable_tts, force_email_send=False):
 
     question = question.strip()
 
@@ -580,7 +580,7 @@ def process_question(question, enable_tts):
     answer = result.answer
 
     # 이메일 발송 요청
-    if result.intent == "email_send":
+    if result.intent == "email_send" or force_email_send:
 
         new_mail = result.email.model_dump()
 
@@ -1749,7 +1749,8 @@ with st.expander(
                 try:
                     process_question(
                         command,
-                        enable_tts
+                        enable_tts,
+                        force_email_send=(label == "📧 이메일 발송")
                     )
 
                     st.rerun()
