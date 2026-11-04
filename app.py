@@ -145,3 +145,25 @@ for msg in reversed(st.session_state.messages):
 
  with st.chat_message("assistant"):
         st.write(msg["assistant"])
+
+# 이메일 발송 화면
+st.divider()
+st.subheader("📧 이메일 발송")
+
+with st.form("email_form"):
+    receiver = st.text_input("받는 사람 이메일")
+    subject = st.text_input("이메일 제목")
+    body = st.text_area("이메일 내용")
+
+    send = st.form_submit_button("발송 승인")
+
+if send:
+    if not receiver or not subject or not body:
+        st.warning("받는 사람, 제목, 내용을 모두 입력해주세요.")
+    else:
+        result = send_email(receiver, subject, body)
+
+        if result["status"] == "success":
+            st.success("이메일 발송 완료!")
+        else:
+            st.error("이메일 발송 실패")
