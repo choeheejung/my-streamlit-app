@@ -103,8 +103,8 @@ if st.button("초기화"):
 st.divider()
 st.subheader("💬 최근 대화 기록")
 
-for msg in st.session_state.messages:
-    with st.chat_message("user"):
+for msg in reversed(st.session_state.messages):
+  with st.chat_message("user"):
         st.write(msg["user"])
 
     with st.chat_message("assistant"):
