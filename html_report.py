@@ -1,10 +1,13 @@
+# 2-1. HTML 이메일 및 회의 보고서 생성 함수
 import html
 
 
+# ── HTML 출력용 특수문자 처리 ──
 def esc(value):
     return html.escape(str(value if value not in (None, "") else "확인 필요"))
 
 
+# ── 일반 이메일 HTML 생성 ──
 def create_html_email(subject, body):
     return f"""<html><body style="background:#f3f6fa;padding:24px;font-family:Arial,sans-serif;">
     <table role="presentation" width="100%" style="max-width:640px;margin:auto;background:white;border-collapse:collapse;">
@@ -16,7 +19,9 @@ def create_html_email(subject, body):
     </table></body></html>"""
 
 
+# ── 회의 요약 및 담당 업무 HTML 보고서 생성 ──
 def create_html_report(data):
+    # ── 보고서 목록 항목 HTML 생성 ──
     def make_list(items):
         if not items:
             return '<p style="color:#667085;">확인된 내용 없음</p>'
@@ -71,6 +76,8 @@ def create_html_report(data):
         {make_list(data.get('discussions', []))}</td></tr>
       <tr><td style="padding:8px 30px 20px;"><h2 style="font-size:18px;color:#172c4a;">03. 최종 결정 사항</h2>
         {make_list(decisions)}</td></tr>
+      <tr><td style="padding:8px 30px 20px;"><h2 style="font-size:18px;color:#172c4a;">논의된 제안사항</h2>
+        {make_list(data.get('proposals', []))}</td></tr>
       <tr><td style="padding:8px 30px 20px;"><h2 style="font-size:18px;color:#172c4a;">04. 김 대리 담당 업무</h2>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
           <tr style="background:#edf2f7;"><th align="left" style="padding:12px;">업무</th>
