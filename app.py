@@ -753,13 +753,13 @@ REPORT_TOOLS = [
                             "due_date": {
                                 "type": [
                                     "string",
-                                    "None"
+                                    "null"
                                 ]
                             },
                             "due_date_evidence": {
                                 "type": [
                                     "string",
-                                    "None"
+                                    "null"
                                 ]
                             },
                             "priority_reason": {
