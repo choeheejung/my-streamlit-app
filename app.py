@@ -1,53 +1,46 @@
 
-import os
-import re
-import json
-import base64
-import hashlib
-import random
-import smtplib
-import tempfile
-from pathlib import Path
-from email.message import EmailMessage
-from typing import Literal
-
+import time
 import streamlit as st
-from openai import OpenAI
-from pydantic import BaseModel, Field
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
-# 이메일 HTML은 html_report.py에서 관리합니다.
-from html_report import create_html_email, create_html_report
+# 페이지 설정
+st.set_page_config(page_title="LLM 챗봇", page_icon="💬", layout="centered")
+st.title("💬 LLM과의 대화")
 
-# =========================================================
-# 1. 기본 설정
-# =========================================================
+# LLM 구성
+llm = ChatOpenAI(model="gpt-4o-mini")
 
-st.set_page_config(
-    page_title="에이블 | 김대리의 개인비서",
-    page_icon="🦦",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 세션 상태 초기화
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# ── Secrets 및 환경 변수에서 설정 읽기 ──
-def get_secret(name):
-    try:
-        value = st.secrets.get(name, None)
-        if value:
-            return value
-    except Exception:
-        pass
-    return os.getenv(name, "")
+# 기존 대화 출력
+for message in st.session_state.messages:
+    role = "user" if isinstance(message, HumanMessage) else "assistant"
+    with st.chat_message(role):
+        st.markdown(message.content)
 
-api_key = get_secret("OPENAI_API_KEY")
+# 사용자 입력
+user_input = st.chat_input("메시지를 입력하세요...")
 
-if not api_key:
-    st.error("OPENAI_API_KEY를 Streamlit Cloud Secrets에 등록하세요.")
-    st.stop()
+if user_input:
+    # 사용자 메시지 출력 및 저장
+    st.chat_message("user").markdown(user_input)
+    st.session_state.messages.append(HumanMessage(content=user_input))
 
-client = OpenAI(api_key=api_key)
+    # 질문과 답변
+    response = llm.invoke(st.session_state.messages)
 
-MODEL = "gpt-4o-mini"
-TEMPERATURE = 0
+    # 타이핑 효과로 출력
+    with st.chat_message("assistant"):
+        response_container = st.empty()
+        full_response = ""
+        for char in response.content:
+            full_response += char
+            response_container.markdown(full_response + "▌")
+            time.sleep(0.01)
+        response_container.markdown(full_response)
 
-# =========================================================
+    # 대화 기록 저장
+    st.session_state.messages.append(AIMessage(content=full_response))
