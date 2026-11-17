@@ -31,7 +31,7 @@ def format_docs(docs):
 # 3. RAG 체인 생성
 def make_chain(vectorstore):
     retriever = vectorstore.as_retriever(
-        search_kwargs={"k": 4}
+        search_kwargs={"k": 8}
     )
 
     llm = ChatOpenAI(
@@ -53,6 +53,8 @@ def make_chain(vectorstore):
 5. 학습에 어려움이나 불안을 표현하면 공감하고 용기를 북돋아 주세요.
 6. 교육생이 적극적으로 도전할 수 있도록 상황에 맞는 실천 방법을 제안하세요.
 7. 따뜻하고 긍정적인 말투를 사용하되, 과장하거나 매번 억지로 격려하지 마세요.
+8. 운영 규정이나 사실 확인 질문에는 정확한 정보만 간결하게 답변하세요.
+9. 학습 고민, 어려움, 도전 관련 질문에만 공감과 격려를 덧붙이세요.
 
 [문서]
 {context}
