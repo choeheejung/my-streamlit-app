@@ -28,10 +28,11 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-# 3. RAG 체인 생성
+# 3. RAG 체인 생성 (Multi-Query 적용)
 def make_chain(vectorstore):
+
     retriever = vectorstore.as_retriever(
-        search_kwargs={"k": 8}
+        search_kwargs={"k": 4}
     )
 
     llm = ChatOpenAI(
@@ -40,7 +41,41 @@ def make_chain(vectorstore):
         streaming=True
     )
 
-    # 시스템 프롬프트
+    # Multi-Query: 검색 질문 3개 생성
+    multiq_prompt = ChatPromptTemplate.from_messages([
+        ("system", """
+당신은 RAG 검색 질의 생성기입니다.
+사용자의 질문을 문서 검색에 유리한 서로 다른 표현 3개로 바꾸세요.
+원래 질문의 의미를 유지하고, 핵심 키워드와 동의어를 활용하세요.
+각 줄에 질문 하나씩 출력하고 번호나 설명은 붙이지 마세요.
+"""),
+        ("human", "{input}")
+    ])
+
+    multiq_chain = multiq_prompt | llm | StrOutputParser()
+
+    # 여러 질문으로 검색하고 중복 문서 제거
+    def multi_retrieve(question):
+        generated = multiq_chain.invoke({"input": question})
+
+        queries = [question] + [
+            line.strip().lstrip("-•0123456789. ")
+            for line in generated.splitlines()
+            if line.strip()
+        ]
+
+        unique_docs = {}
+        for query in queries:
+            docs = retriever.invoke(query)
+
+            for doc in docs:
+                key = doc.page_content
+                if key not in unique_docs:
+                    unique_docs[key] = doc
+
+        return list(unique_docs.values())
+
+    # AI 학습 멘토 시스템 메시지
     s_msg = """
 당신은 KT AIVLE School을 처음 시작하는 교육생을 위한
 친절하고 긍정적인 AI 학습 멘토입니다.
@@ -52,9 +87,9 @@ def make_chain(vectorstore):
 4. 초보 교육생도 이해하기 쉽도록 핵심부터 간결하게 설명하세요.
 5. 학습에 어려움이나 불안을 표현하면 공감하고 용기를 북돋아 주세요.
 6. 교육생이 적극적으로 도전할 수 있도록 상황에 맞는 실천 방법을 제안하세요.
-7. 따뜻하고 긍정적인 말투를 사용하되, 과장하거나 매번 억지로 격려하지 마세요.
+7. 따뜻하고 긍정적인 말투를 사용하되 과장하지 마세요.
 8. 운영 규정이나 사실 확인 질문에는 정확한 정보만 간결하게 답변하세요.
-9. 학습 고민, 어려움, 도전 관련 질문에만 공감과 격려를 덧붙이세요.
+9. 학습 고민이나 도전 관련 질문에만 자연스럽게 격려를 덧붙이세요.
 
 [문서]
 {context}
@@ -67,7 +102,7 @@ def make_chain(vectorstore):
 
     rag_chain = (
         {
-            "context": itemgetter("input") | retriever | format_docs,
+            "context": itemgetter("input") | multi_retrieve | format_docs,
             "input": itemgetter("input")
         }
         | prompt
