@@ -12,6 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from operator import itemgetter
+from langchain_core.runnables import RunnableLambda
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -102,7 +103,11 @@ def make_chain(vectorstore):
 
     rag_chain = (
         {
-            "context": itemgetter("input") | multi_retrieve | format_docs,
+            "context": (
+    itemgetter("input")
+    | RunnableLambda(multi_retrieve)
+    | RunnableLambda(format_docs)
+),
             "input": itemgetter("input")
         }
         | prompt
