@@ -140,7 +140,6 @@ if "uploaded_chain" not in st.session_state:
 if "file_key" not in st.session_state:
     st.session_state.file_key = None
 
-
 # 7. 사이드바
 with st.sidebar:
     st.title("📘 AIVLE School")
@@ -158,74 +157,79 @@ with st.sidebar:
     st.caption("PDF를 업로드하면 해당 문서로 답변합니다.")
 
     st.divider()
-    
+
+    # 학습 카테고리
     st.subheader("📚 학습 카테고리")
 
     category = st.selectbox(
         "궁금한 분야를 선택하세요.",
-         ["입과 준비", "교육생활", "학습·복습", "프로젝트", "취업 준비"]
-        )
-    
+        ["입과 준비", "교육생활", "학습·복습", "프로젝트", "취업 준비"]
+    )
+
     # 카테고리별 추천 질문
     question_dict = {
         "입과 준비": [
             "AIVLE School 지원 자격은 무엇인가요?",
             "입과 전에 무엇을 준비하면 좋을까요?"
-            ],
+        ],
         "교육생활": [
             "복습 영상은 언제 올라오나요?",
             "교육 중 출결 관리는 어떻게 하나요?"
-            ],
+        ],
         "학습·복습": [
             "코딩이 처음인데 어떻게 공부하면 좋을까요?",
             "효율적으로 복습하는 방법은 무엇인가요?"
-            ],
+        ],
         "프로젝트": [
             "미니프로젝트는 어떻게 준비하면 좋을까요?",
             "팀 프로젝트에서 협업을 잘하려면 어떻게 해야 하나요?"
-            ],
+        ],
         "취업 준비": [
             "취업 준비는 언제부터 시작해야 하나요?",
             "어떤 취업 지원 프로그램이 있나요?"
-            ]
-        }
-        
-st.subheader("💡 추천 질문")
-        
-recommended_questions = question_dict[category]
+        ]
+    }
 
+    # 추천 질문
+    st.subheader("💡 추천 질문")
 
-selected_question = None
+    recommended_questions = question_dict[category]
 
-for i, question in enumerate(recommended_questions):
-        if st.button(question, key=f"recommend_{i}", use_container_width=True):
+    selected_question = None
+
+    for i, question in enumerate(recommended_questions):
+        if st.button(
+            question,
+            key=f"recommend_{i}",
+            use_container_width=True
+        ):
             selected_question = question
 
-st.divider()
+    st.divider()
 
+    # 대화 내용을 텍스트로 변환
+    chat_text = ""
 
-# 대화 내용을 텍스트로 변환
-chat_text = ""
+    for message in st.session_state.messages:
+        if isinstance(message, HumanMessage):
+            role = "사용자"
+        else:
+            role = "AI 학습 도우미"
 
-for message in st.session_state.messages:
-    if isinstance(message, HumanMessage):
-        role = "사용자"
-    else:
-        role = "AI 학습 도우미"
+        chat_text += f"[{role}]\n{message.content}\n\n"
 
-    chat_text += f"[{role}]\n{message.content}\n\n"
+    # 대화 다운로드
+    st.download_button(
+        label="📥 대화 내용 다운로드",
+        data=chat_text,
+        file_name="aivle_chat_history.txt",
+        mime="text/plain",
+        use_container_width=True,
+        disabled=not st.session_state.messages
+    )
 
-# 대화 다운로드 버튼
-st.download_button(
-    label="📥 대화 내용 다운로드",
-    data=chat_text,
-    file_name="aivle_chat_history.txt",
-    mime="text/plain",
-    use_container_width=True,
-    disabled=not st.session_state.messages
-)
-
-if st.button("🗑️ 대화 삭제", use_container_width=True):
+    # 대화 삭제
+    if st.button("🗑️ 대화 삭제", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
