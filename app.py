@@ -1,40 +1,69 @@
 
+import os
+import hashlib
+import tempfile
 import streamlit as st
+
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_pymupdf4llm import PyMuPDF4LLMLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from operator import itemgetter
 
-# 벡터 저장소 경로, 컬렉션 이름 (Colab에서 만들 때와 같아야 함)
+# 1. 페이지 설정
+st.set_page_config(
+    page_title="AIVLE School 학습 도우미",
+    page_icon="📘",
+    layout="wide"
+)
+
 CHROMA_DIR = "chroma_db"
 COLLECTION = "aivle_docs"
 
-# 문서 포맷팅 함수
+# 2. 문서 포맷터 (어제 코드)
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-# Embedding 모델, 검색기
-@st.cache_resource
-def get_retriever():
-    embedding = OpenAIEmbeddings(model="text-embedding-3-small")
-    vectorstore = Chroma(
-        collection_name=COLLECTION,
-        embedding_function=embedding,
-        persist_directory=CHROMA_DIR
-    )
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
 
-# 체인 캐싱
-@st.cache_resource
-def get_chain():
-    retriever = get_retriever()
-    s_msg = "당신은 주어진 문서를 기반으로 답변하는 AIVLE School 학습 도우미입니다.\n\n[문서]\n\n{context}"
-    h_msg = "{input}"
-    messages = [("system", s_msg), ("human", h_msg)]
-    prompt = ChatPromptTemplate.from_messages(messages)
-    llm = ChatOpenAI(model="gpt-4o-mini", streaming=True, temperature=0)
+# 3. RAG 체인 생성
+def make_chain(vectorstore):
+    retriever = vectorstore.as_retriever(
+        search_kwargs={"k": 4}
+    )
+
+    llm = ChatOpenAI(
+        model_name="gpt-4o-mini",
+        temperature=0,
+        streaming=True
+    )
+
+    # 시스템 프롬프트
+    s_msg = """
+당신은 KT AIVLE School 교육생을 위한 학습 도우미입니다.
+
+다음 지침을 반드시 따르세요.
+1. 제공된 문서(context)에 근거하여 질문에 답변하세요.
+2. 질문과 문서의 표현이 다르더라도 의미가 같다면
+   관련 내용을 활용하여 답변하세요.
+3. 문서에 질문의 답이 직접적으로 제시되지 않았더라도,
+   관련 내용으로 답변할 수 있다면 문서에 근거하여 설명하세요.
+4. 문서에 근거가 없는 정보는 추측하거나 만들어내지 마세요.
+5. 관련 내용이 전혀 없거나 질문에 답할 근거가 부족하면
+   "업로드된 문서에서 확인되지 않습니다."라고 답변하세요.
+6. 답변은 교육생이 이해하기 쉽도록 간결하고 명확하게 작성하세요.
+
+[문서]
+{context}
+"""
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", s_msg),
+        ("human", "{input}")
+    ])
+
     rag_chain = (
         {
             "context": itemgetter("input") | retriever | format_docs,
@@ -44,36 +73,214 @@ def get_chain():
         | llm
         | StrOutputParser()
     )
+
     return rag_chain
 
-# RAG 체인 준비
-chain = get_chain()
 
-# 페이지 설정
-st.set_page_config(page_title="AIVLE School 학습 도우미", page_icon="📘")
-st.title("📘 AIVLE School 학습 도우미")
+# 4. 기존 백서 RAG (캐싱)
+@st.cache_resource
+def get_default_chain():
+    embedding = OpenAIEmbeddings(
+        model="text-embedding-3-small"
+    )
 
-# 세션 상태 초기화
+    vectorstore = Chroma(
+        collection_name=COLLECTION,
+        embedding_function=embedding,
+        persist_directory=CHROMA_DIR
+    )
+
+    if vectorstore._collection.count() == 0:
+        raise ValueError(
+            "기본 백서 DB가 비어 있습니다. "
+            "chroma_db 폴더를 확인하세요."
+        )
+
+    return make_chain(vectorstore)
+
+
+# 5. 어제 만든 RAG 파이프라인을 업로드용으로 적용
+def rag_pipeline(filepath):
+    # PDF 읽기
+    loader = PyMuPDF4LLMLoader(filepath)
+    docs = loader.load()
+
+    # 텍스트 분할
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100,
+        separators=["\n\n", "\n", ".", " ", ""]
+    )
+    chunks = splitter.split_documents(docs)
+
+    if not chunks:
+        raise ValueError("PDF에서 텍스트를 추출하지 못했습니다.")
+
+    # 임베딩
+    embedding = OpenAIEmbeddings(
+        model="text-embedding-3-small"
+    )
+
+    # 업로드 문서 전용 임시 벡터 저장소
+    vectorstore = Chroma.from_documents(
+        documents=chunks,
+        embedding=embedding
+    )
+
+    # RAG 체인 생성
+    return make_chain(vectorstore)
+
+
+# 6. 세션 상태 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 기존 대화 내용 출력
+if "uploaded_chain" not in st.session_state:
+    st.session_state.uploaded_chain = None
+
+if "file_key" not in st.session_state:
+    st.session_state.file_key = None
+
+
+# 7. 사이드바
+with st.sidebar:
+    st.title("📘 AIVLE School")
+    st.caption("AI 학습 도우미")
+
+    st.divider()
+
+    st.subheader("📁 문서 업로드")
+
+    uploaded_file = st.file_uploader(
+        "PDF 파일을 선택하세요.",
+        type=["pdf"]
+    )
+
+    st.caption("PDF를 업로드하면 해당 문서로 답변합니다.")
+
+    st.divider()
+
+    st.subheader("💡 추천 질문")
+
+    recommended_questions = [
+        "복습 영상은 언제 올라오나요?",
+        "코딩마스터스는 필수인가요?",
+        "미니프로젝트는 어떻게 준비하나요?"
+    ]
+
+    selected_question = None
+
+    for i, question in enumerate(recommended_questions):
+        if st.button(question, key=f"recommend_{i}", use_container_width=True):
+            selected_question = question
+
+    st.divider()
+
+    if st.button("🗑️ 대화 삭제", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+
+# 8. 업로드 문서 처리
+if uploaded_file is not None:
+    file_bytes = uploaded_file.getvalue()
+    file_key = hashlib.sha256(file_bytes).hexdigest()
+
+    if st.session_state.file_key != file_key:
+        with st.spinner("문서를 분석하고 있습니다..."):
+            tmp_path = None
+
+            try:
+                with tempfile.NamedTemporaryFile(
+                    delete=False,
+                    suffix=".pdf"
+                ) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+
+                new_chain = rag_pipeline(tmp_path)
+
+                st.session_state.uploaded_chain = new_chain
+                st.session_state.file_key = file_key
+                st.session_state.messages = []
+
+            except Exception as e:
+                st.error(f"문서 처리 오류: {e}")
+                st.stop()
+
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
+    chain = st.session_state.uploaded_chain
+    st.sidebar.success(f"문서 준비 완료: {uploaded_file.name}")
+
+else:
+    if st.session_state.file_key is not None:
+        st.session_state.file_key = None
+        st.session_state.uploaded_chain = None
+        st.session_state.messages = []
+
+    try:
+        chain = get_default_chain()
+    except Exception as e:
+        st.error(f"기본 백서 연결 오류: {e}")
+        st.stop()
+
+
+# 9. 메인 화면
+st.title("📘 AIVLE School 학습 도우미")
+st.caption("AIVLE School에 대한 궁금증을 AI에게 질문해 보세요.")
+
+st.divider()
+
+if uploaded_file is None:
+    st.info("현재 기본 AIVLE School 학습백서를 사용 중입니다.")
+else:
+    st.info(f"현재 문서: {uploaded_file.name}")
+
+
+# 10. 기존 대화 출력
 for message in st.session_state.messages:
-    role = "user" if isinstance(message, HumanMessage) else "assistant"
+    role = (
+        "user"
+        if isinstance(message, HumanMessage)
+        else "assistant"
+    )
+
     with st.chat_message(role):
         st.markdown(message.content)
 
-# 사용자 입력 처리
-user_input = st.chat_input("메시지를 입력하세요.")
+
+# 11. 질문 입력
+user_input = st.chat_input("궁금한 내용을 입력하세요.")
+
+if selected_question:
+    user_input = selected_question
+
+
+# 12. RAG 답변
 if user_input:
-    # 사용자 메시지 표시
-    st.chat_message("user").markdown(user_input)
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-    # 응답 출력
     with st.chat_message("assistant"):
-        response_stream = chain.stream({"input": user_input})
-        full_response = st.write_stream(response_stream)
+        with st.spinner("답변을 생성하고 있습니다..."):
+            try:
+                response_stream = chain.stream(
+                    {"input": user_input}
+                )
+                answer = st.write_stream(response_stream)
 
-    # 대화 기록 저장
-    st.session_state.messages.append(HumanMessage(content=user_input))
-    st.session_state.messages.append(AIMessage(content=full_response))
+            except Exception as e:
+                st.error(f"답변 생성 오류: {e}")
+                st.stop()
+
+    # 대화 저장
+    st.session_state.messages.append(
+        HumanMessage(content=user_input)
+    )
+
+    st.session_state.messages.append(
+        AIMessage(content=answer)
+    )
